@@ -5,8 +5,8 @@ const playwright = require("playwright");
 
 (async() => {
 
-    let group_urls = []
-    let browserType = "chromium"
+    let group_urls = [];
+    let browserType = "chromium";
     const browser = await playwright[browserType].launch({
         headless: false
     });
@@ -31,11 +31,6 @@ const playwright = require("playwright");
         urls = await page.$$eval('div[data-visualcompletion=ignore-dynamic]>a', (elements) =>
             elements.map((el) => el.href)
         )
-        const hasGroupinURL = (str, groups) => {
-            str.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").split(/\s+/).exclude(word);
-
-        }
-
 
         for (let url of urls) {
             if ((url.includes("feed") === false) && (url.includes("discover") === false) && (url.includes("notifications") === false) && (url.includes("groups") === true)) {
@@ -43,6 +38,9 @@ const playwright = require("playwright");
             }
         }
         console.log(group_urls);
+        group_url = group_urls[0]
+        page.goto(group_url.concat("people"));
+        await page.waitForNavigation();
 
     } catch (error) {
         console.error(`Trying to run test on ${browserType}: ${error}`);
