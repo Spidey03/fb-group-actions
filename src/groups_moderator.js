@@ -38,9 +38,32 @@ const playwright = require("playwright");
             }
         }
         console.log(group_urls);
-        group_url = group_urls[0]
+        group_url = group_urls[0];
         page.goto(group_url.concat("people"));
         await page.waitForNavigation();
+        await page.waitForResponse(response => {
+            return response.request().resourceType() === "xhr"
+        })
+
+        let i = 1;
+        while (i > 0) {
+            try {
+                let xpath = 'xpath=//div/div[1]/div/div[3]/div/div/div[1]/div[1]/div[2]/div/div/div[4]/div/div/div/div/div/div/div/div/div/div/div[3]/div/div/div[2]/div[1]/div/div[2]/div/div[' + i + ']/div/div/div[1]/div/a';
+                await page.click(xpath);
+                console.log(page.url());
+                // validate isUser male with new page?
+
+                page.goBack();
+
+            } catch (error) {
+                console.log(error);
+                break;
+            }
+            i++;
+        }
+
+        console.log("Done");
+
 
     } catch (error) {
         console.error(`Trying to run test on ${browserType}: ${error}`);
