@@ -2,6 +2,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const ini = require('ini');
 const playwright = require("playwright");
+const { config } = require('process');
 
 
 (async() => {
@@ -14,9 +15,10 @@ const playwright = require("playwright");
 
 
     try {
-        const credentials = ini.parse(fs.readFileSync('config/credentials.ini', 'utf-8'))["Credentials"];
-        let username = credentials["username"]
-        let password = credentials["password"]
+        const config = ini.parse(fs.readFileSync('config/credentials.ini', 'utf-8'));
+        let username = config["Credentials"]["username"]
+        let password = config["Credentials"]["password"]
+        let bot_id = config['Bot']['id'];
 
         const context = await browser.newContext();
         const page = await context.newPage();
@@ -40,7 +42,6 @@ const playwright = require("playwright");
         }
 
         for (group_url of group_urls) {
-            console.log(group_url)
             page.goto(group_url.concat("people"));
             await page.waitForNavigation();
             await page.waitForResponse(response => {
@@ -51,26 +52,64 @@ const playwright = require("playwright");
             while (i > 0) {
                 try {
                     let xpath = 'xpath=//div/div[1]/div/div[3]/div/div/div[1]/div[1]/div[2]/div/div/div[4]/div/div/div/div/div/div/div/div/div/div/div[3]/div/div/div[2]/div[1]/div/div[2]/div/div[' + i + ']/div/div/div[1]/div/a';
-                    await page.click(xpath);
+                    await page.click(xpath, { waitUntil: 'networkidle' });
+
                     await page.waitForResponse(response => {
                         return response.request().resourceType() === "xhr"
-                    })
-                    user_profile_url = await page.url();
-                    user_id = user_profile_url.split("/user/")[1];
-                    user_id = user_id.replace(new RegExp("/", "g"), "");
+                    });
+                    let user_profile_url = await page.url();
+                    let user_id = await user_profile_url.split("/user/")[1];
+                    user_id = await user_id.replace(new RegExp("/", "g"), "");
+                    if (user_id == bot_id) {
+                        await page.goBack();
+                        i++;
+                        continue;
+                    }
 
                     // validate isUser male with new page?
                     newPage = await context.newPage();
                     let user_info_url = "https://www.facebook.com/profile.php?id=" + user_id + "&sk=about_contact_and_basic_info";
-                    await newPage.goto(user_info_url);
-                    await page.waitForResponse(response => {
-                            return response.request().resourceType() === "xhr"
-                        })
-                        // gender = await newPage.$$eval('span:has-text("Male")');
-                        // console.log(gender);
+                    await newPage.goto(user_info_url, { waitUntil: 'networkidle' });
+                    await newPage.waitForResponse(response => {
+                        return response.request().resourceType() === "xhr"
+                    })
 
+                    let gender = undefined;
+                    let rec_gender = undefined;
+                    try {
+                        gender = await page.textContent('xpath=//div/div[1]/div/div[3]/div/div/div[1]/div[1]/div/div/div[4]/div/div/div/div[1]/div/div/div/div/div[2]/div/div/div/div[3]/div[2]/div/div/div[2]/div/div/div/div/div[1]/span');
+                    } catch (error) {
+                        //aws reckognition
+                        rec_gender = false
+                    }
+
+                    // remove member from group if Male
+                    if (gender == "Male" || rec_gender == true) {
+                        more_options_xpath = 'xpath=//div/div[1]/div/div[4]/div/div/div[1]/div/div[3]/div/div[1]/div[2]/div/div/div[2]/div/div/div/div[3]/div';
+                        remove_member_xpath = 'xpath=//div/div[1]/div/div[4]/div/div/div[1]/div/div[4]/div/div/div[1]/div[1]/div/div/div[1]/div/div[1]/div/div[1]/div/div[7]'
+
+                        await page.waitForSelector(more_options_xpath);
+                        await page.click(more_options_xpath);
+                        await page.waitForSelector(remove_member_xpath);
+                        await page.click(remove_member_xpath);
+
+                        //removing options
+                        deleteRecentActivityXPATH = 'xpath=//div/div[1]/div/div[4]/div/div/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[1]/div[2]/div/div[4]/div/div/div/div[2]/div/div/div[2]/div[2]/div/div/div';
+                        blockUserXPATH = 'xpath=//div/div[1]/div/div[4]/div/div/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[1]/div[2]/div/div[4]/div/div/div/div[3]/div/div/div[2]/div[2]/div/div/div';
+                        blockFutureProfilesXPATH = 'xpath=//div/div[1]/div/div[4]/div/div/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[1]/div[2]/div/div[4]/div/div/div/div[4]/div/div/div[2]/div[2]/div/div/div';
+                        applyChangesXPATH = '//div/div[1]/div/div[4]/div/div/div[2]/div/div/div[1]/div/div[2]/div/div/div/div/div[2]/div/div[3]/div/div[4]/div/div/div/div[2]/div/div/div/div[2]/div/div/div/input';
+
+                        await page.click(deleteRecentActivityXPATH);
+                        await page.click(blockUserXPATH);
+                        await page.click(blockFutureProfilesXPATH);
+                        await page.click('text="Confirm"');
+                        i--;
+                    } else {
+                        console.log(user_id + " Not male");
+                    }
                     await newPage.close();
-                    await page.goBack();
+                    await page.goto(group_url.concat("people"));
+                    // break;
 
                 } catch (error) {
                     console.log(error);
