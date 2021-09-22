@@ -109,7 +109,6 @@ const { config } = require('process');
                     }
                     await newPage.close();
                     await page.goto(group_url.concat("people"));
-                    // break;
 
                 } catch (error) {
                     console.log(error);
