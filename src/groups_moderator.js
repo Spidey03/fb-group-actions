@@ -17,7 +17,7 @@ function getGroupURL(groupID) {
 
 function getUserIdFromURL(profileURL) {
     let userID = profileURL.split("/user/")[1];
-    userID = userID.replace(new RegExp("/", "g"), "");
+    userID = userID.split("/")[0];
     return userID
 }
 
@@ -66,53 +66,59 @@ function getUserProfileURL(userID) {
                     let pos = 1;
                     while (pos > 0) {
                         try {
-                            let userProfileImage = maleFilteingXPATHs.getUserProfile(pos)
-                            await sleep(3000);
+                            let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
 
-                            await page.click(userProfileImage, { waitUntil: 'networkidle' });
-                            await page.waitForResponse(response => {
-                                return response.request().resourceType() === "xhr"
-                            });
-                            let profileURL = await page.url();
+                            await sleep(3000);
+                            let userProfileImageURL = await page.getAttribute(userProfileImage, 'href');
                             await sleep(2000);
-                            userID = await getUserIdFromURL(profileURL);
+                            userID = await getUserIdFromURL(userProfileImageURL);
                             if (userID == botID) {
-                                await page.goBack();
                                 pos++;
                                 continue;
                             }
 
-                            newPage = await context.newPage();
                             let userProfileURL = await getUserProfileURL(userID);
-                            await newPage.goto(userProfileURL, { waitUntil: 'networkidle' });
-                            await newPage.waitForResponse(response => {
-                                return response.request().resourceType() === "xhr"
-                            })
-                            await sleep(3000);
-
                             let gender = rec_gender = undefined;
-                            gender = await newPage.textContent(maleFilteingXPATHs.genderEl);
-                            if (gender == undefined) {
+                            try {
+                                newPage = await context.newPage();
+                                await newPage.goto(userProfileURL, { waitUntil: 'networkidle' });
+                                await newPage.waitForResponse(response => {
+                                    return response.request().resourceType() === "xhr"
+                                })
+                                await sleep(4000);
+                                gender = await newPage.textContent(maleFilteingXPATHs.genderEl);
+                            } catch (error) {
                                 //aws reckognition
                                 rec_gender = false
                             }
                             console.log(userID + " " + gender);
-                            if (gender == "Male" || rec_gender == true) {
-                                await page.waitForSelector(maleFilteingXPATHs.moreOptions);
-                                await page.click(maleFilteingXPATHs.moreOptions);
-                                await sleep(2000);
-                                if ("Remove member" == await page.textContent(maleFilteingXPATHs.removeMember)) {
-                                    await page.click(maleFilteingXPATHs.removeMember);
-                                    await page.click(maleFilteingXPATHs.deleteRecentActivity);
-                                    await page.click(maleFilteingXPATHs.blockUser);
-                                    await page.click(maleFilteingXPATHs.blockFutureProfiles);
-                                    await page.click('text="Confirm"');
-                                    pos--;
-                                }
-                            }
                             await newPage.close();
+                            if (gender == "Male" || rec_gender == true) {
+                                memberURL = 'https://www.facebook.com' + userProfileImageURL;
+                                memberPage = await context.newPage();
+                                await memberPage.goto(memberURL, { waitUntil: 'networkidle' });
+                                await memberPage.waitForResponse(response => {
+                                    return response.request().resourceType() === "xhr"
+                                });
+                                await sleep(2000);
+                                await memberPage.click(maleFilteingXPATHs.moreOptions);
+                                await sleep(2000);
+                                try {
+                                    await memberPage.click(maleFilteingXPATHs.removeMember);
+                                    await sleep(1000);
+                                    await memberPage.click(maleFilteingXPATHs.deleteRecentActivity);
+                                    await sleep(1000);
+                                    await memberPage.click(maleFilteingXPATHs.blockUser);
+                                    await sleep(1000);
+                                    await memberPage.click(maleFilteingXPATHs.blockFutureProfiles);
+                                    await sleep(1000);
+                                    await memberPage.click('text="Confirm"');
+                                } catch (error) {
+                                    //pass
+                                }
+                                memberPage.close();
+                            }
                             await sleep(4000);
-                            await page.goto(groupURL);
 
                         } catch (error) {
                             console.log(error);
