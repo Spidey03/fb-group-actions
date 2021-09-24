@@ -32,6 +32,20 @@ async function scrollOnElement(page, selector) {
     });
 }
 
+async function loginToAccount(loginPage) {
+    const config = ini.parse(fs.readFileSync('config/credentials.ini', 'utf-8'));
+    let username = config["Credentials"]["username"];
+    let password = config["Credentials"]["password"];
+    await loginPage.goto('https://www.facebook.com/groups/discover/');
+    await loginPage.fill('input[name=email]', username);
+    await loginPage.fill('input[name=pass]', password);
+    await loginPage.press('input[name=pass]', 'Enter')
+    await loginPage.waitForNavigation();
+    await loginPage.waitForResponse(response => {
+        return response.request().resourceType() === "xhr"
+    })
+}
+
 (async() => {
 
     let browserType = "chromium";
@@ -44,27 +58,21 @@ async function scrollOnElement(page, selector) {
         const config = ini.parse(fs.readFileSync('config/credentials.ini', 'utf-8'));
         let username = config["Credentials"]["username"]
         let password = config["Credentials"]["password"]
-        let botID = config['Bot']['id'];
         json_file = "./actions_and_groups.json";
         const actionsAndGroups = require(json_file);
 
-        const page = await context.newPage();
-        await page.goto('https://www.facebook.com/groups/discover/');
-        await page.fill('input[name=email]', username);
-        await page.fill('input[name=pass]', password);
-        await page.press('input[name=pass]', 'Enter')
-        await page.waitForNavigation();
-        await page.waitForResponse(response => {
-            return response.request().resourceType() === "xhr"
-        })
+        const loginPage = await context.newPage();
+        await loginToAccount(loginPage);
 
+        const groupPage = await context.newPage();
+        await loginPage.close()
         for (const key in actionsAndGroups) {
             console.log(`${key} :`)
             for (let groupID of actionsAndGroups[key]) {
                 console.log(groupID);
                 groupURL = getGroupURL(groupID);
-                await page.goto(groupURL, { waitUntil: 'networkidle' });
-                await page.waitForResponse(response => {
+                await groupPage.goto(groupURL, { waitUntil: 'networkidle' });
+                await groupPage.waitForResponse(response => {
                     return response.request().resourceType() === "xhr"
                 })
                 if (key == "Male Filtering") {
@@ -74,31 +82,27 @@ async function scrollOnElement(page, selector) {
                         try {
                             await sleep(2000);
                             let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
-                            scrollOnElement(page, userProfileImage);
-                            let userProfileImageURL = await page.getAttribute(userProfileImage, 'href');
+                            scrollOnElement(groupPage, userProfileImage);
+                            let userProfileImageURL = await groupPage.getAttribute(userProfileImage, 'href');
                             await sleep(2000);
                             userID = await getUserIdFromURL(userProfileImageURL);
-                            if (userID == botID) {
-                                pos++;
-                                continue;
-                            }
 
                             let userProfileURL = await getUserProfileURL(userID);
                             let gender = rec_gender = undefined;
                             try {
-                                newPage = await context.newPage();
-                                await newPage.goto(userProfileURL, { waitUntil: 'networkidle' });
-                                await newPage.waitForResponse(response => {
+                                profilePage = await context.newPage();
+                                await profilePage.goto(userProfileURL, { waitUntil: 'networkidle' });
+                                await profilePage.waitForResponse(response => {
                                     return response.request().resourceType() === "xhr"
                                 })
                                 await sleep(4000);
-                                gender = await newPage.textContent(maleFilteingXPATHs.genderEl);
+                                gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
                             } catch (error) {
                                 //aws reckognition
                                 rec_gender = false
                             }
                             console.log(userID + " " + gender);
-                            await newPage.close();
+                            await profilePage.close();
                             if (gender == "Male" || rec_gender == true) {
                                 memberURL = 'https://www.facebook.com' + userProfileImageURL;
                                 memberPage = await context.newPage();
@@ -134,22 +138,22 @@ async function scrollOnElement(page, selector) {
                     }
                 } else if (key == "Reminder Invitees") {
                     console.log("Reminding");
-                    await page.click(remindInvitessXPATHs.filterOption, { waitUntil: 'networkidle' });
-                    await page.keyboard.down('ArrowDown');
-                    await page.keyboard.down('ArrowDown');
-                    await page.keyboard.down('Enter');
+                    await groupPage.click(remindInvitessXPATHs.filterOption, { waitUntil: 'networkidle' });
+                    await groupPage.keyboard.down('ArrowDown');
+                    await groupPage.keyboard.down('ArrowDown');
+                    await groupPage.keyboard.down('Enter');
                     let pos = 1
                     while (pos) {
                         let userOptions = remindInvitessXPATHs.moreUserOption(pos);
                         await sleep(2000);
-                        scrollOnElement(page, userOptions);
-                        await page.click(userOptions, { waitUntil: 'load' });
+                        scrollOnElement(groupPage, userOptions);
+                        await groupPage.click(userOptions, { waitUntil: 'load' });
                         await sleep(3000);
-                        value = await page.textContent(remindInvitessXPATHs.sendReminderOption);
+                        value = await groupPage.textContent(remindInvitessXPATHs.sendReminderOption);
                         if (value == "Send reminder") {
-                            await page.click(remindInvitessXPATHs.sendReminderOption);
+                            await groupPage.click(remindInvitessXPATHs.sendReminderOption);
                             await sleep(1000);
-                            await page.click(remindInvitessXPATHs.confirmButton);
+                            await groupPage.click(remindInvitessXPATHs.confirmButton);
                         }
                         pos++;
                         await sleep(2000);
