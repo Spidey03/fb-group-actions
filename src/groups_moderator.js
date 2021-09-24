@@ -46,6 +46,73 @@ async function loginToAccount(loginPage) {
     })
 }
 
+async function getGenderOfUser(context, userProfileURL) {
+    profilePage = await context.newPage();
+    await profilePage.goto(userProfileURL, { waitUntil: 'networkidle' });
+    await profilePage.waitForResponse(response => {
+        return response.request().resourceType() === "xhr"
+    })
+    await sleep(4000);
+    gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
+    profilePage.close();
+    return gender
+}
+
+async function removeMemberFromGroup(context, userProfileImageURL) {
+    memberURL = 'https://www.facebook.com' + userProfileImageURL;
+    memberPage = await context.newPage();
+    await memberPage.goto(memberURL, { waitUntil: 'networkidle' });
+    await memberPage.waitForResponse(response => {
+        return response.request().resourceType() === "xhr"
+    });
+    await sleep(2000);
+    await memberPage.click(maleFilteingXPATHs.moreOptions);
+    await sleep(2000);
+    try {
+        await memberPage.click(maleFilteingXPATHs.removeMember);
+        await sleep(1000);
+        await memberPage.click(maleFilteingXPATHs.deleteRecentActivity);
+        await sleep(1000);
+        await memberPage.click(maleFilteingXPATHs.blockUser);
+        await sleep(1000);
+        await memberPage.click(maleFilteingXPATHs.blockFutureProfiles);
+        await sleep(1000);
+        await memberPage.click('text="Confirm"');
+
+    } catch (error) {
+        //pass
+    }
+    memberPage.close();
+}
+
+async function checkAndRemoveMembersIfMale(context, groupPage) {
+
+}
+
+async function remindInvitees(groupPage) {
+    console.log("Reminding");
+    await groupPage.click(remindInvitessXPATHs.filterOption, { waitUntil: 'networkidle' });
+    await groupPage.keyboard.down('ArrowDown');
+    await groupPage.keyboard.down('ArrowDown');
+    await groupPage.keyboard.down('Enter');
+    let pos = 1
+    while (pos) {
+        let userOptions = remindInvitessXPATHs.moreUserOption(pos);
+        await sleep(2000);
+        scrollOnElement(groupPage, userOptions);
+        await groupPage.click(userOptions, { waitUntil: 'load' });
+        await sleep(3000);
+        value = await groupPage.textContent(remindInvitessXPATHs.sendReminderOption);
+        if (value == "Send reminder") {
+            await groupPage.click(remindInvitessXPATHs.sendReminderOption);
+            await sleep(1000);
+            await groupPage.click(remindInvitessXPATHs.confirmButton);
+        }
+        pos++;
+        await sleep(2000);
+    }
+}
+
 (async() => {
 
     let browserType = "chromium";
@@ -55,17 +122,14 @@ async function loginToAccount(loginPage) {
     const context = await browser.newContext();
 
     try {
-        const config = ini.parse(fs.readFileSync('config/credentials.ini', 'utf-8'));
-        let username = config["Credentials"]["username"]
-        let password = config["Credentials"]["password"]
-        json_file = "./actions_and_groups.json";
-        const actionsAndGroups = require(json_file);
-
         const loginPage = await context.newPage();
         await loginToAccount(loginPage);
 
         const groupPage = await context.newPage();
         await loginPage.close()
+
+        json_file = "./actions_and_groups.json";
+        const actionsAndGroups = require(json_file);
         for (const key in actionsAndGroups) {
             console.log(`${key} :`)
             for (let groupID of actionsAndGroups[key]) {
@@ -76,9 +140,9 @@ async function loginToAccount(loginPage) {
                     return response.request().resourceType() === "xhr"
                 })
                 if (key == "Male Filtering") {
-                    console.log("Removing Male Persons");
+                    console.log("Removing Male Persons...");
                     let pos = 1;
-                    while (pos > 0) {
+                    while (pos) {
                         try {
                             await sleep(2000);
                             let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
@@ -86,47 +150,17 @@ async function loginToAccount(loginPage) {
                             let userProfileImageURL = await groupPage.getAttribute(userProfileImage, 'href');
                             await sleep(2000);
                             userID = await getUserIdFromURL(userProfileImageURL);
-
                             let userProfileURL = await getUserProfileURL(userID);
                             let gender = rec_gender = undefined;
                             try {
-                                profilePage = await context.newPage();
-                                await profilePage.goto(userProfileURL, { waitUntil: 'networkidle' });
-                                await profilePage.waitForResponse(response => {
-                                    return response.request().resourceType() === "xhr"
-                                })
-                                await sleep(4000);
-                                gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
+                                gender = await getGenderOfUser(context, userProfileURL)
                             } catch (error) {
                                 //aws reckognition
                                 rec_gender = false
                             }
-                            console.log(userID + " " + gender);
                             await profilePage.close();
                             if (gender == "Male" || rec_gender == true) {
-                                memberURL = 'https://www.facebook.com' + userProfileImageURL;
-                                memberPage = await context.newPage();
-                                await memberPage.goto(memberURL, { waitUntil: 'networkidle' });
-                                await memberPage.waitForResponse(response => {
-                                    return response.request().resourceType() === "xhr"
-                                });
-                                await sleep(2000);
-                                await memberPage.click(maleFilteingXPATHs.moreOptions);
-                                await sleep(2000);
-                                try {
-                                    await memberPage.click(maleFilteingXPATHs.removeMember);
-                                    await sleep(1000);
-                                    await memberPage.click(maleFilteingXPATHs.deleteRecentActivity);
-                                    await sleep(1000);
-                                    await memberPage.click(maleFilteingXPATHs.blockUser);
-                                    await sleep(1000);
-                                    await memberPage.click(maleFilteingXPATHs.blockFutureProfiles);
-                                    await sleep(1000);
-                                    await memberPage.click('text="Confirm"');
-                                } catch (error) {
-                                    //pass
-                                }
-                                memberPage.close();
+                                await removeMemberFromGroup(context, userProfileImageURL)
                             }
                             await sleep(4000);
 
@@ -137,27 +171,7 @@ async function loginToAccount(loginPage) {
                         pos++;
                     }
                 } else if (key == "Reminder Invitees") {
-                    console.log("Reminding");
-                    await groupPage.click(remindInvitessXPATHs.filterOption, { waitUntil: 'networkidle' });
-                    await groupPage.keyboard.down('ArrowDown');
-                    await groupPage.keyboard.down('ArrowDown');
-                    await groupPage.keyboard.down('Enter');
-                    let pos = 1
-                    while (pos) {
-                        let userOptions = remindInvitessXPATHs.moreUserOption(pos);
-                        await sleep(2000);
-                        scrollOnElement(groupPage, userOptions);
-                        await groupPage.click(userOptions, { waitUntil: 'load' });
-                        await sleep(3000);
-                        value = await groupPage.textContent(remindInvitessXPATHs.sendReminderOption);
-                        if (value == "Send reminder") {
-                            await groupPage.click(remindInvitessXPATHs.sendReminderOption);
-                            await sleep(1000);
-                            await groupPage.click(remindInvitessXPATHs.confirmButton);
-                        }
-                        pos++;
-                        await sleep(2000);
-                    }
+                    await remindInvitees(groupPage)
                 }
             }
         }
@@ -167,5 +181,4 @@ async function loginToAccount(loginPage) {
     } finally {
         await browser.close();
     }
-
 })();
