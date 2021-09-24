@@ -11,7 +11,7 @@ function sleep(ms) {
 }
 
 function getGroupURL(groupID) {
-    let groupURL = "https://www.facebook.com/groups/" + groupID + "/people";
+    let groupURL = "https://www.facebook.com/groups/" + groupID + "/people/members/";
     return groupURL;
 }
 
@@ -24,6 +24,12 @@ function getUserIdFromURL(profileURL) {
 function getUserProfileURL(userID) {
     let userProfileURL = "https://www.facebook.com/profile.php?id=" + userID + "&sk=about_contact_and_basic_info";
     return userProfileURL;
+}
+
+async function scrollOnElement(page, selector) {
+    await page.$eval(selector, (element) => {
+        element.scrollIntoView();
+    });
 }
 
 (async() => {
@@ -66,9 +72,9 @@ function getUserProfileURL(userID) {
                     let pos = 1;
                     while (pos > 0) {
                         try {
+                            await sleep(2000);
                             let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
-
-                            await sleep(3000);
+                            scrollOnElement(page, userProfileImage);
                             let userProfileImageURL = await page.getAttribute(userProfileImage, 'href');
                             await sleep(2000);
                             userID = await getUserIdFromURL(userProfileImageURL);
@@ -134,12 +140,15 @@ function getUserProfileURL(userID) {
                     await page.keyboard.down('Enter');
                     let pos = 1
                     while (pos) {
-                        await page.click(remindInvitessXPATHs.moreUserOption(pos), { waitUntil: 'load' });
+                        let userOptions = remindInvitessXPATHs.moreUserOption(pos);
+                        await sleep(2000);
+                        scrollOnElement(page, userOptions);
+                        await page.click(userOptions, { waitUntil: 'load' });
                         await sleep(3000);
                         value = await page.textContent(remindInvitessXPATHs.sendReminderOption);
-                        await console.log(value)
                         if (value == "Send reminder") {
                             await page.click(remindInvitessXPATHs.sendReminderOption);
+                            await sleep(1000);
                             await page.click(remindInvitessXPATHs.confirmButton);
                         }
                         pos++;
