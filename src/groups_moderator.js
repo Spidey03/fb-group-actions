@@ -57,11 +57,13 @@ async function getGenderOfUser(profilePage, userProfileURL) {
     try {
         gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
     } catch (error) {
-        imageXPATH = '(//*[name()="image"])[2]'
+        //pass
+    }
+    if (gender != "Male" && gender != "Female") {
+        imageXPATH = '(//*[name()="image"])[15]';
         profilePicURL = await profilePage.getAttribute(imageXPATH, 'xlink:href');
         gender = await rekognition.getGenderUsingProfilePic(profilePicURL);
     }
-    console.log(gender)
     if (gender == "Male") {
         return true;
     }
@@ -93,10 +95,6 @@ async function removeMemberFromGroup(context, userProfileImageURL) {
         //pass
     }
     memberPage.close();
-}
-
-async function checkAndRemoveMembersIfMale(context, groupPage) {
-
 }
 
 async function remindInvitees(groupPage) {
