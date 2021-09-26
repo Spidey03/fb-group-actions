@@ -4,7 +4,6 @@ const AWS = require('aws-sdk'),
 
 dotenv.config();
 S3_REGION = process.env.S3_REGION;
-console.log(S3_REGION);
 
 AWS.config.update({
     region: S3_REGION
@@ -12,16 +11,16 @@ AWS.config.update({
 const rekognition = new AWS.Rekognition();
 
 
-async function isGenderMale(path) {
+async function getGenderUsingProfilePic(path) {
     const bytes = await getBase64BufferFromURL(path)
     face = await analyseFaceFromBytes(bytes);
-    gender = face.FaceDetails[0].Gender
-    console.log(gender);
-    if (gender == "Male") {
-        return true;
+    faceDetails = face.FaceDetails[0]
+    if (faceDetails != undefined && "Gender" in faceDetails) {
+        gender = faceDetails.Gender.Value
+        console.log(gender);
+        return gender
     }
-    return false;
-
+    return null
 }
 
 function analyseFaceFromBytes(bytes) {
@@ -47,4 +46,8 @@ function getBase64BufferFromURL(url) {
         .catch(error => {
             console.log('[ERROR]', error);
         });
+}
+
+module.exports = {
+    getGenderUsingProfilePic
 }

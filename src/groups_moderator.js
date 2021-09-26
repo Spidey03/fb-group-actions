@@ -5,6 +5,7 @@ const playwright = require("playwright");
 const { config } = require('process');
 const maleFilteingXPATHs = require("./maleFilteingXPATHs")
 const remindInvitessXPATHs = require("./remindInvitessXPATHs")
+const rekognition = require("./rekognition")
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -46,16 +47,25 @@ async function loginToAccount(loginPage) {
     })
 }
 
-async function getGenderOfUser(context, userProfileURL) {
-    profilePage = await context.newPage();
+async function getGenderOfUser(profilePage, userProfileURL) {
     await profilePage.goto(userProfileURL, { waitUntil: 'networkidle' });
     await profilePage.waitForResponse(response => {
         return response.request().resourceType() === "xhr"
     })
     await sleep(4000);
-    gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
-    profilePage.close();
-    return gender
+    let gender = undefined;
+    try {
+        gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
+    } catch (error) {
+        imageXPATH = '(//*[name()="image"])[2]'
+        profilePicURL = await profilePage.getAttribute(imageXPATH, 'xlink:href');
+        gender = await rekognition.getGenderUsingProfilePic(profilePicURL);
+    }
+    console.log(gender)
+    if (gender == "Male") {
+        return true;
+    }
+    return false;
 }
 
 async function removeMemberFromGroup(context, userProfileImageURL) {
@@ -151,15 +161,12 @@ async function remindInvitees(groupPage) {
                             await sleep(2000);
                             userID = await getUserIdFromURL(userProfileImageURL);
                             let userProfileURL = await getUserProfileURL(userID);
-                            let gender = rec_gender = undefined;
-                            try {
-                                gender = await getGenderOfUser(context, userProfileURL)
-                            } catch (error) {
-                                //aws reckognition
-                                rec_gender = false
-                            }
+                            let isMale = undefined;
+                            profilePage = await context.newPage();
+                            isMale = await getGenderOfUser(profilePage, userProfileURL)
                             await profilePage.close();
-                            if (gender == "Male" || rec_gender == true) {
+                            console.log(isMale);
+                            if (isMale == true) {
                                 await removeMemberFromGroup(context, userProfileImageURL)
                             }
                             await sleep(4000);
