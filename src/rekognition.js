@@ -17,7 +17,6 @@ async function getGenderUsingProfilePic(path) {
     faceDetails = face.FaceDetails[0]
     if (faceDetails != undefined && "Gender" in faceDetails) {
         gender = faceDetails.Gender.Value
-        console.log(gender);
         return gender
     }
     return null

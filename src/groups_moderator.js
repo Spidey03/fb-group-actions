@@ -165,7 +165,6 @@ async function remindInvitees(groupPage) {
                             profilePage = await context.newPage();
                             isMale = await getGenderOfUser(profilePage, userProfileURL)
                             await profilePage.close();
-                            console.log(isMale);
                             if (isMale == true) {
                                 await removeMemberFromGroup(context, userProfileImageURL)
                             }
