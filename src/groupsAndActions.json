@@ -1,0 +1,11 @@
+{
+    "groups": [{
+        "groupID": "",
+        "isGenderFilter": true,
+        "isReminderInvitees": false
+    }, {
+        "groupID": "",
+        "isGenderFilter": true,
+        "isReminderInvitees": false
+    }]
+}

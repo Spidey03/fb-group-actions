@@ -1,0 +1,1 @@
+groups_moderator = require('./src/groups_moderator')
