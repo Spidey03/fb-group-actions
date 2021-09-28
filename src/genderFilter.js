@@ -75,6 +75,8 @@ async function main(groupPage, memberPage, profilePage) {
             let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
             scrollOnElement.scrollOnElement(groupPage, userProfileImage);
             let userProfileImageURL = await groupPage.getAttribute(userProfileImage, 'href');
+            console.log(userProfileImage);
+            console.log(userProfileImageURL);
             await sleep(2000);
             userID = await getUserIdFromURL(userProfileImageURL);
             let userProfileURL = await getUserProfileURL(userID);
