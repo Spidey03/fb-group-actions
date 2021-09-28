@@ -1,5 +1,5 @@
 const remindInvitessXPATHs = require("./remindInvitessXPATHs")
-const scrollOnElement = require("./scrollOnElement")
+const scrollOnElement = require("../scrollOnElement")
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

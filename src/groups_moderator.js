@@ -1,8 +1,8 @@
 const playwright = require("playwright");
 
 const account = require("./account");
-const genderFilter = require("./genderFilter");
-const remindInvitees = require("./remindInvitees");
+const genderFilter = require("./gender_filtering/index");
+const remindInvitees = require("./remind_invitees/index");
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -17,6 +17,15 @@ function getGroupsAndActions() {
 function getGroupURL(groupID) {
     let groupURL = "https://www.facebook.com/groups/" + groupID + "/people/members/";
     return groupURL;
+}
+
+async function navigateToGroup(groupID, groupPage) {
+    console.log(groupID);
+    groupURL = getGroupURL(groupID);
+    await groupPage.goto(groupURL, { waitUntil: 'networkidle' });
+    await groupPage.waitForResponse(response => {
+        return response.request().resourceType() === "xhr"
+    });
 }
 
 (async() => {
@@ -35,13 +44,8 @@ function getGroupURL(groupID) {
 
         actionsAndGroups = getGroupsAndActions();
         for (let group of actionsAndGroups["groups"]) {
-            groupID = group.groupID
-            console.log(groupID);
-            groupURL = getGroupURL(groupID);
-            await groupPage.goto(groupURL, { waitUntil: 'networkidle' });
-            await groupPage.waitForResponse(response => {
-                return response.request().resourceType() === "xhr"
-            });
+            groupID = group.groupID;
+            await navigateToGroup(groupID, groupPage);
             if (group.isGenderFilter) {
                 console.log("Gender Filter");
                 memberPage = await context.newPage();

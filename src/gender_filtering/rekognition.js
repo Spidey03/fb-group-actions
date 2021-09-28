@@ -1,9 +1,9 @@
 const AWS = require('aws-sdk'),
     axios = require('axios'),
-    dotenv = require('dotenv');
+    yargs = require('yargs');
 
-dotenv.config();
-S3_REGION = process.env.S3_REGION;
+
+S3_REGION = yargs.argv._[2];
 
 AWS.config.update({
     region: S3_REGION

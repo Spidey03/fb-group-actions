@@ -1,6 +1,6 @@
 const rekognition = require("./rekognition");
-const scrollOnElement = require("./scrollOnElement");
-const maleFilteingXPATHs = require("./maleFilteingXPATHs");
+const scrollOnElement = require("../scrollOnElement");
+const genderFilteingXPATHs = require("./genderFilteingXPATHs");
 
 
 function sleep(ms) {
@@ -27,7 +27,7 @@ async function getGenderOfUser(profilePage, userProfileURL) {
     await sleep(4000);
     let gender = undefined;
     try {
-        gender = await profilePage.textContent(maleFilteingXPATHs.genderEl);
+        gender = await profilePage.textContent(genderFilteingXPATHs.genderEl);
     } catch (error) {
         //pass
     }
@@ -49,16 +49,16 @@ async function removeMemberFromGroup(memberPage, userProfileImageURL) {
         return response.request().resourceType() === "xhr"
     });
     await sleep(2000);
-    await memberPage.click(maleFilteingXPATHs.moreOptions);
+    await memberPage.click(genderFilteingXPATHs.moreOptions);
     await sleep(2000);
     try {
-        await memberPage.click(maleFilteingXPATHs.removeMember);
+        await memberPage.click(genderFilteingXPATHs.removeMember);
         await sleep(1000);
-        await memberPage.click(maleFilteingXPATHs.deleteRecentActivity);
+        await memberPage.click(genderFilteingXPATHs.deleteRecentActivity);
         await sleep(1000);
-        await memberPage.click(maleFilteingXPATHs.blockUser);
+        await memberPage.click(genderFilteingXPATHs.blockUser);
         await sleep(1000);
-        await memberPage.click(maleFilteingXPATHs.blockFutureProfiles);
+        await memberPage.click(genderFilteingXPATHs.blockFutureProfiles);
         await sleep(1000);
         await memberPage.click('text="Confirm"');
 
@@ -72,7 +72,7 @@ async function main(groupPage, memberPage, profilePage) {
     while (pos) {
         try {
             await sleep(2000);
-            let userProfileImage = maleFilteingXPATHs.getUserProfile(pos);
+            let userProfileImage = genderFilteingXPATHs.getUserProfile(pos);
             scrollOnElement.scrollOnElement(groupPage, userProfileImage);
             let userProfileImageURL = await groupPage.getAttribute(userProfileImage, 'href');
             console.log(userProfileImage);
@@ -82,8 +82,7 @@ async function main(groupPage, memberPage, profilePage) {
             let userProfileURL = await getUserProfileURL(userID);
             console.log(userProfileURL);
             let isMale = undefined;
-            isMale = await getGenderOfUser(profilePage, userProfileURL)
-                // await profilePage.close();
+            isMale = await getGenderOfUser(profilePage, userProfileURL);
             if (isMale == true) {
                 await removeMemberFromGroup(memberPage, userProfileImageURL)
             }
