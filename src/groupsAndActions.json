@@ -1,0 +1,11 @@
+{
+    "groups": [{
+        "groupID": "404441207734278",
+        "isGenderFilter": true,
+        "isReminderInvitees": true
+    }, {
+        "groupID": "",
+        "isGenderFilter": false,
+        "isReminderInvitees": true
+    }]
+}
